@@ -1,0 +1,169 @@
+---
+title: "FinalProject(6)"
+author: "Mizuki Shitomi (905863786)"
+date: "2025-12-07"
+output: pdf_document
+---
+
+```{r}
+set.seed(87)
+train <- read.csv("~/Documents/UCLA/YEAR 4/STATS 101C/FINAL PROJECT/train_imputed.csv")
+test  <- read.csv("~/Documents/UCLA/YEAR 4/STATS 101C/FINAL PROJECT/test_imputed.csv")
+train$Cancer <- factor(train$Cancer)
+library(MASS)
+library(glmnet)
+library(caret)   # <-- add caret
+```
+
+
+# LDA + Scaling/Centering + Dropping Cor Pred
+
+```{r}
+# Drop clearly uninformative / "fun" variables
+
+drop_vars <- c(
+"favorite_color",
+"favorite_cuisine",
+"phone_brand",
+"preferred_shoe_type",
+"music_genre",
+"pets",
+"uses_smartwatch"
+)
+
+# Identify numeric columns
+num_cols <- sapply(train, is.numeric)
+
+# Correlation matrix
+corr_mat <- cor(train[, num_cols])
+
+# Find highly correlated predictors
+high_corr <- findCorrelation(corr_mat, cutoff = 0.90)
+
+# Remove them
+if (length(high_corr) > 0) {
+  remove_names <- names(train[, num_cols])[high_corr]
+  train <- train[, !(names(train) %in% remove_names)]
+  test  <- test[,  !(names(test)  %in% remove_names)]
+}
+
+train <- train[ , !(names(train) %in% drop_vars)]
+test  <- test[  , !(names(test)  %in% drop_vars)]
+
+# 10-fold cross-validation
+
+ctrl <- trainControl(
+method = "cv",
+number = 10
+)
+
+# LDA model with ONE interaction term added
+
+# (this is the only real change vs your original model)
+
+lda_fit <- train(
+  Cancer ~ .,
+  data      = train,
+  method    = "lda",
+  trControl = ctrl,
+  preProcess = c("center", "scale")   # <-- SMALL CHANGE, BIG IMPACT
+)
+
+lda_fit
+
+# Training predictions and accuracy
+
+train_pred     <- predict(lda_fit, newdata = train)
+train_accuracy <- mean(train_pred == train$Cancer)
+train_accuracy
+
+# Test predictions for Kaggle submission
+
+test_pred <- predict(lda_fit, newdata = test)
+
+pred <- data.frame(
+ID     = 1:nrow(test),
+Cancer = factor(test_pred, levels = c("Benign", "Malignant"))
+)
+
+write.csv(pred, "~/Documents/UCLA/YEAR 4/STATS 101C/FINAL PROJECT/submission_lda_scaling_drop_cor.csv", row.names = FALSE)
+```
+
+# Ridge Regression 
+
+```{r}
+# Drop clearly uninformative / "fun" variables
+
+drop_vars <- c(
+"favorite_color",
+"favorite_cuisine",
+"phone_brand",
+"preferred_shoe_type",
+"music_genre",
+"pets",
+"uses_smartwatch"
+)
+
+# Identify numeric columns
+num_cols <- sapply(train, is.numeric)
+
+# Correlation matrix
+corr_mat <- cor(train[, num_cols])
+
+# Find highly correlated predictors
+high_corr <- findCorrelation(corr_mat, cutoff = 0.90)
+
+# Remove them
+if (length(high_corr) > 0) {
+  remove_names <- names(train[, num_cols])[high_corr]
+  train <- train[, !(names(train) %in% remove_names)]
+  test  <- test[,  !(names(test)  %in% remove_names)]
+}
+
+train <- train[ , !(names(train) %in% drop_vars)]
+test  <- test[  , !(names(test)  %in% drop_vars)]
+
+# 10-fold cross-validation
+
+ctrl <- trainControl(
+method = "cv",
+number = 10
+)
+
+# LDA model with ONE interaction term added
+
+# (this is the only real change vs your original model)
+
+# glmnet logistic regression (ridge)
+glmnet_fit <- train(
+  Cancer ~ .,
+  data       = train,
+  method     = "glmnet",
+  trControl  = ctrl,
+  preProcess = c("center", "scale"),   # keep this, it helps a lot
+  tuneGrid   = expand.grid(
+    alpha = 0,                         # ridge penalty
+    lambda = seq(0.0001, 1, length = 50)
+  )
+)
+glmnet_fit
+
+# Training predictions and accuracy
+
+train_pred     <- predict(glmnet_fit, newdata = train)
+train_accuracy <- mean(train_pred == train$Cancer)
+train_accuracy
+
+# Test predictions for Kaggle submission
+
+test_pred <- predict(glmnet_fit, newdata = test)
+
+pred <- data.frame(
+ID     = 1:nrow(test),
+Cancer = factor(test_pred, levels = c("Benign", "Malignant"))
+)
+
+write.csv(pred, "~/Documents/UCLA/YEAR 4/STATS 101C/FINAL PROJECT/submission_glmnet_ridge.csv", row.names = FALSE)
+```
+
+
