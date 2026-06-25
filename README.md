@@ -53,8 +53,6 @@ Classify skin lesions as benign or malignant from structured clinical and lifest
 | `FinalProject_Mizuki.Rmd` | Classification models: LDA and ridge logistic regression with 10-fold CV |
 | `skin_cancer_report.pdf` | Full written report: EDA, variable selection, model comparison, discussion |
 
-> **Note:** The dataset was part of a Kaggle competition and is not included. To reproduce results, the training and test CSVs from the competition are required.
-
 ## Full Report
 
 [View on portfolio →](https://manuela-lozano.netlify.app/projects/skin-cancer.html)
